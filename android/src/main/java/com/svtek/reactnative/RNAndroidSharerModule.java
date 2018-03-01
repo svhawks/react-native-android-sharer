@@ -1,12 +1,17 @@
 
 package com.svtek.reactnative;
 
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
+import android.os.Parcelable;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Log;
 
 import com.facebook.react.bridge.Promise;
@@ -23,6 +28,8 @@ import com.facebook.share.widget.ShareDialog;
 
 import java.io.File;
 import java.io.FileDescriptor;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
 
@@ -83,10 +90,15 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void shareViaSms(String filePath, final Promise promise) {
     try {
+      String defaultSmsApplication = Settings.Secure.getString(
+              this.reactContext.getContentResolver(),
+              "sms_default_application");
+      PackageManager pm = this.reactContext.getPackageManager();
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
       shareIntent.putExtra("sms_body", "https://www.leoapp.com");
       shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
       shareIntent.setType(this.getMimeType(filePath));
+      shareIntent.setPackage(defaultSmsApplication);
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
       promise.resolve(null);
     } catch (Exception ex) {
@@ -139,11 +151,35 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void shareViaEmail(String filePath, final Promise promise) {
     try {
-      Intent shareIntent = new Intent(Intent.ACTION_SEND);
-      shareIntent.setType("message/rfc822");;
-      shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
-      shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Reality by Leo App");
-      this.reactContext.getCurrentActivity().startActivity(shareIntent);
+      List<Intent> intentShareList = new ArrayList<Intent>();
+      Intent shareIntent = new Intent();
+      shareIntent.setAction(Intent.ACTION_SEND);
+      shareIntent.setType("message/rfc822");
+      List<ResolveInfo> resolveInfoList =
+              this.reactContext.getPackageManager().queryIntentActivities(shareIntent, 0);
+
+      for (ResolveInfo resInfo : resolveInfoList) {
+        String packageName = resInfo.activityInfo.packageName;
+        String name = resInfo.activityInfo.name;
+        if (packageName.contains("com.android.email") ||
+                packageName.contains("com.google.android.gm")) {
+          Intent intent = new Intent();
+          intent.setComponent(new ComponentName(packageName, name));
+          intent.setAction(Intent.ACTION_SEND);
+          intent.setType("message/rfc822");
+          intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
+          intent.putExtra(Intent.EXTRA_SUBJECT, "https://www.leoapp.com");
+          intentShareList.add(intent);
+        }
+      }
+
+      if (intentShareList.isEmpty()) {
+        promise.reject(getName(), "Failed to find an email app.");
+      } else {
+        Intent chooserIntent = Intent.createChooser(intentShareList.remove(0), "Share via Email");
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentShareList.toArray(new Parcelable[]{}));
+        this.reactContext.getCurrentActivity().startActivity(chooserIntent);
+      }
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
@@ -155,10 +191,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   public void shareViaTwitter(String filePath, final Promise promise) {
     try {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
-      shareIntent.setType("/*");
-      shareIntent.setClassName("com.twitter.android",
-              "com.twitter.android.composer.ComposerShareActivity");
-      shareIntent.putExtra(Intent.EXTRA_TEXT, "https://www.leoapp.com");
+      shareIntent.setType(this.getMimeType(filePath));
+      shareIntent.setPackage("com.twitter.android");
       shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
       promise.resolve(null);
