@@ -10,7 +10,6 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.os.Parcelable;
-import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -18,7 +17,6 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.Callback;
 
 import com.facebook.share.model.SharePhoto;
 import com.facebook.share.model.SharePhotoContent;
@@ -27,7 +25,6 @@ import com.facebook.share.model.ShareVideoContent;
 import com.facebook.share.widget.ShareDialog;
 
 import java.io.File;
-import java.io.FileDescriptor;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,7 +51,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       return String.format("image/%s", extension);
     } catch (Exception ex) {
       Log.d(this.getName(), ex.toString());
-      return null;
+      return "";
     }
   }
 
