@@ -46,7 +46,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       }
       return String.format("image/%s", extension);
     } catch (Exception ex) {
-      Log.d("RNAndroidSharer", ex.toString());
+      Log.d(this.getName(), ex.toString());
       return null;
     }
   }
@@ -63,7 +63,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
-      promise.reject("RNAndroidSharerException", ex);
+      promise.reject(this.getName(), ex);
     }
   }
 
@@ -76,7 +76,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
-      promise.reject("RNAndroidSharerException", ex);
+      promise.reject(this.getName(), ex);
     }
   }
 
@@ -91,7 +91,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
-      promise.reject("RNAndroidSharerException", ex);
+      promise.reject(this.getName(), ex);
     }
   }
 
@@ -107,7 +107,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
-      promise.reject("RNAndroidSharerException", ex);
+      promise.reject(this.getName(), ex);
     }
   }
 
@@ -122,7 +122,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
-      promise.reject("RNAndroidSharerException", ex);
+      promise.reject(this.getName(), ex);
     }
   }
 
@@ -147,7 +147,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
-      promise.reject("RNAndroidSharerException", ex);
+      promise.reject(this.getName(), ex);
     }
   }
 
@@ -164,7 +164,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
-      promise.reject("RNAndroidSharerException", ex);
+      promise.reject(this.getName(), ex);
     }
   }
 
@@ -179,7 +179,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
-      promise.reject("RNAndroidSharerException", ex);
+      promise.reject(this.getName(), ex);
     }
   }
 
@@ -193,7 +193,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
-      promise.reject("RNAndroidSharerException", ex);
+      promise.reject(this.getName(), ex);
     }
   }
 }
