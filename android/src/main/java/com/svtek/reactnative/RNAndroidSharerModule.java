@@ -2,15 +2,20 @@
 package com.svtek.reactnative;
 
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.os.Parcelable;
 import android.provider.Settings;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.content.FileProvider;
 import android.util.Log;
 
 import com.facebook.react.bridge.Promise;
@@ -84,6 +89,25 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
     }
   }
 
+  public @Nullable Uri uriFromFilePath(@NonNull final String filePath) {
+    File file = new File(filePath);
+    Uri result = null;
+    if (Build.VERSION.SDK_INT < 21) {
+      result = Uri.fromFile(file);
+    }
+    else {
+      final String packageName = this.reactContext.getApplicationContext().getPackageName();
+      final String authority = new StringBuilder(packageName).append(".provider").toString();
+      try {
+        result = FileProvider.getUriForFile(this.reactContext, authority, file);
+      }
+      catch(IllegalArgumentException e) {
+        e.printStackTrace();
+      }
+    }
+    return result;
+  }
+
   @ReactMethod
   public void shareViaSms(String filePath, final Promise promise) {
     try {
@@ -93,7 +117,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       PackageManager pm = this.reactContext.getPackageManager();
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
       shareIntent.putExtra("sms_body", "https://www.leoapp.com");
-      shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
+      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
       shareIntent.setType(this.getMimeType(filePath));
       shareIntent.setPackage(defaultSmsApplication);
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
@@ -109,7 +134,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
     try {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
       shareIntent.putExtra(Intent.EXTRA_TEXT, "https://www.leoapp.com");
-      shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
+      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
       shareIntent.setType(this.getMimeType(filePath));
       shareIntent.setPackage("com.whatsapp");
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
@@ -124,7 +150,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   public void shareViaInstagram(String filePath, final Promise promise) {
     try {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
-      shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
+      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
       shareIntent.setType(this.getMimeType(filePath));
       shareIntent.setPackage("com.instagram.android");
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
@@ -165,7 +192,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
           intent.setComponent(new ComponentName(packageName, name));
           intent.setAction(Intent.ACTION_SEND);
           intent.setType("message/rfc822");
-          intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
+          intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+          intent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
           intent.putExtra(Intent.EXTRA_SUBJECT, "https://www.leoapp.com");
           intentShareList.add(intent);
         }
@@ -191,7 +219,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
       shareIntent.setType(this.getMimeType(filePath));
       shareIntent.setPackage("com.twitter.android");
-      shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
+      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
       promise.resolve(null);
     } catch (Exception ex) {
@@ -204,7 +233,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   public void shareViaTumblr(String filePath, final Promise promise) {
     try {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
-      shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
+      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
       shareIntent.setType(this.getMimeType(filePath));
       shareIntent.setPackage("com.tumblr");
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
@@ -219,7 +249,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   public void shareViaMoreOptions(String filePath, final Promise promise) {
     try {
       Intent shareIntent = new Intent();
-      shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(filePath)));
+      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
       shareIntent.setType(this.getMimeType(filePath));
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
       promise.resolve(null);
