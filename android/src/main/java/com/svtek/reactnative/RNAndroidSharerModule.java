@@ -159,7 +159,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
         String packageName = resInfo.activityInfo.packageName;
         String name = resInfo.activityInfo.name;
         if (packageName.contains("com.android.email") ||
-                packageName.contains("com.google.android.gm")) {
+            packageName.contains("com.google.android.gm") ||
+            packageName.contains("mail")) {
           Intent intent = new Intent();
           intent.setComponent(new ComponentName(packageName, name));
           intent.setAction(Intent.ACTION_SEND);
