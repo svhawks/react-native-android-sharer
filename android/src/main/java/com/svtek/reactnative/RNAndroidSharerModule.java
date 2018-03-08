@@ -171,13 +171,13 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       }
 
       if (intentShareList.isEmpty()) {
-        promise.reject(getName(), "Failed to find an email app.");
+        promise.reject(this.getName(), "Failed to find an email app.");
       } else {
         Intent chooserIntent = Intent.createChooser(intentShareList.remove(0), "Share via Email");
         chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentShareList.toArray(new Parcelable[]{}));
         this.reactContext.getCurrentActivity().startActivity(chooserIntent);
+        promise.resolve(null);
       }
-      promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
       promise.reject(this.getName(), ex);
