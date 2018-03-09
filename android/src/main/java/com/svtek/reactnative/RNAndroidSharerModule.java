@@ -89,10 +89,10 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
     }
   }
 
-  public @Nullable Uri uriFromFilePath(@NonNull final String filePath) {
+  private @Nullable Uri uriFromFilePath(@NonNull final String filePath) {
     File file = new File(filePath);
     Uri result = null;
-    if (Build.VERSION.SDK_INT < 21) {
+    if (Build.VERSION.SDK_INT <= 21) {
       result = Uri.fromFile(file);
     }
     else {
@@ -105,7 +105,18 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
         e.printStackTrace();
       }
     }
+    this.broadCastToMediaScanner(this.reactContext.getApplicationContext(), result);
     return result;
+  }
+
+  private void broadCastToMediaScanner(Context context, Uri contentUri) {
+    try {
+      Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+      mediaScanIntent.setData(contentUri);
+      context.sendBroadcast(mediaScanIntent);
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
   }
 
   @ReactMethod
@@ -186,8 +197,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
         String packageName = resInfo.activityInfo.packageName;
         String name = resInfo.activityInfo.name;
         if (packageName.contains("com.android.email") ||
-            packageName.contains("com.google.android.gm") ||
-            packageName.contains("mail")) {
+                packageName.contains("com.google.android.gm") ||
+                packageName.contains("mail")) {
           Intent intent = new Intent();
           intent.setComponent(new ComponentName(packageName, name));
           intent.setAction(Intent.ACTION_SEND);
