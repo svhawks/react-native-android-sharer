@@ -63,7 +63,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   private void shareImageViaFacebook(String filePath, final Promise promise) {
     try {
       ParcelFileDescriptor fd = this.reactContext.getContentResolver()
-              .openFileDescriptor(Uri.fromFile(new File(filePath)), "r");
+              .openFileDescriptor(this.uriFromFilePath(filePath), "r");
       Bitmap image = BitmapFactory.decodeFileDescriptor(fd.getFileDescriptor());
       SharePhoto photo = new SharePhoto.Builder().setBitmap(image).build();
       SharePhotoContent content = new SharePhotoContent.Builder().addPhoto(photo).build();
@@ -79,7 +79,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   private void shareVideoViaFacebook(String filePath, final Promise promise) {
     try {
       ShareVideo video = new ShareVideo.Builder()
-              .setLocalUrl(Uri.fromFile(new File(filePath))).build();
+              .setLocalUrl(this.uriFromFilePath(filePath)).build();
       ShareVideoContent content = new ShareVideoContent.Builder().setVideo(video).build();
       ShareDialog.show(this.reactContext.getCurrentActivity(), content);
       promise.resolve(null);
@@ -89,7 +89,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
     }
   }
 
-  private @Nullable Uri uriFromFilePath(@NonNull final String filePath) {
+  public @Nullable Uri uriFromFilePath(@NonNull String filePath) {
+    filePath = filePath.replace("file://", "");
     File file = new File(filePath);
     Uri result = null;
     if (Build.VERSION.SDK_INT <= 21) {
@@ -105,18 +106,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
         e.printStackTrace();
       }
     }
-    this.broadCastToMediaScanner(this.reactContext.getApplicationContext(), result);
     return result;
-  }
-
-  private void broadCastToMediaScanner(Context context, Uri contentUri) {
-    try {
-      Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-      mediaScanIntent.setData(contentUri);
-      context.sendBroadcast(mediaScanIntent);
-    } catch (Exception ex) {
-      ex.printStackTrace();
-    }
   }
 
   @ReactMethod
@@ -197,8 +187,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
         String packageName = resInfo.activityInfo.packageName;
         String name = resInfo.activityInfo.name;
         if (packageName.contains("com.android.email") ||
-                packageName.contains("com.google.android.gm") ||
-                packageName.contains("mail")) {
+            packageName.contains("com.google.android.gm") ||
+            packageName.contains("mail")) {
           Intent intent = new Intent();
           intent.setComponent(new ComponentName(packageName, name));
           intent.setAction(Intent.ACTION_SEND);
