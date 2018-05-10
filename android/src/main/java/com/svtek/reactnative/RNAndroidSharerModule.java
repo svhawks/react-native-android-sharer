@@ -260,4 +260,28 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.reject(this.getName(), ex);
     }
   }
+
+  @ReactMethod
+  public void shareViaFBMessenger(String filePath, final Promise promise) {
+    String EXTRA_PROTOCOL_VERSION = "com.facebook.orca.extra.PROTOCOL_VERSION";
+    String EXTRA_APP_ID = "com.facebook.orca.extra.APPLICATION_ID";
+    int PROTOCOL_VERSION = 20150314;
+    String YOUR_FB_APP_ID = "756927241168396";
+    int SHARE_TO_MESSENGER_REQUEST_CODE = 1;
+
+    try {
+      Intent shareIntent = new Intent(Intent.ACTION_SEND);
+      shareIntent.setPackage("com.facebook.orca");
+      shareIntent.setType(this.getMimeType(filePath));
+      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
+      shareIntent.putExtra(EXTRA_PROTOCOL_VERSION, PROTOCOL_VERSION);
+      shareIntent.putExtra(EXTRA_APP_ID, YOUR_FB_APP_ID);
+      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      this.reactContext.getCurrentActivity().startActivityForResult(shareIntent, SHARE_TO_MESSENGER_REQUEST_CODE);
+      promise.resolve(null);
+    } catch (Exception ex) {
+      ex.printStackTrace();
+      promise.reject(this.getName(), ex);
+    }
+  }
 }
