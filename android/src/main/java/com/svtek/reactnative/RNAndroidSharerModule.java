@@ -23,6 +23,7 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 
+import com.facebook.share.model.ShareLinkContent;
 import com.facebook.share.model.SharePhoto;
 import com.facebook.share.model.SharePhotoContent;
 import com.facebook.share.model.ShareVideo;
@@ -110,17 +111,24 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void shareViaSms(String filePath, final Promise promise) {
+  public void shareViaSms(String filePath, String shareUrl, final Promise promise) {
     try {
       String defaultSmsApplication = Settings.Secure.getString(
               this.reactContext.getContentResolver(),
               "sms_default_application");
       PackageManager pm = this.reactContext.getPackageManager();
-      Intent shareIntent = new Intent(Intent.ACTION_SEND);
-      shareIntent.putExtra("sms_body", "https://www.leoapp.com");
-      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-      shareIntent.setType(this.getMimeType(filePath));
+      Intent shareIntent;
+      if (shareUrl.isEmpty()) {
+        shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.putExtra("sms_body", "https://www.leoapp.com");
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
+        shareIntent.setType(this.getMimeType(filePath));
+      } else {
+        shareIntent = new Intent(Intent.ACTION_VIEW);
+        shareIntent.setType("vnd.android-dir/mms-sms");
+        shareIntent.putExtra("sms_body", shareUrl);
+      }
       shareIntent.setPackage(defaultSmsApplication);
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
       promise.resolve(null);
@@ -131,13 +139,18 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void shareViaWhatsApp(String filePath, final Promise promise) {
+  public void shareViaWhatsApp(String filePath, String shareUrl, final Promise promise) {
     try {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
-      shareIntent.putExtra(Intent.EXTRA_TEXT, "https://www.leoapp.com");
-      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-      shareIntent.setType(this.getMimeType(filePath));
+      if (shareUrl.isEmpty()) {
+        shareIntent.putExtra(Intent.EXTRA_TEXT, "https://www.leoapp.com");
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
+        shareIntent.setType(this.getMimeType(filePath));
+      } else {
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
+      }
       shareIntent.setPackage("com.whatsapp");
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
       promise.resolve(null);
@@ -164,7 +177,15 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void shareViaFacebook(String filePath, final Promise promise) {
+  public void shareViaFacebook(String filePath, String shareUrl, final Promise promise) {
+    if (!shareUrl.isEmpty()) {
+      ShareLinkContent content = new ShareLinkContent.Builder()
+              .setContentUrl(Uri.parse(shareUrl))
+              .build();
+      ShareDialog.show(this.reactContext.getCurrentActivity(), content);
+      return;
+    }
+
     String mimeType = this.getMimeType(filePath);
     if (mimeType.startsWith("image")) {
       this.shareImageViaFacebook(filePath, promise);
@@ -174,7 +195,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void shareViaEmail(String filePath, final Promise promise) {
+  public void shareViaEmail(String filePath, String shareUrl, final Promise promise) {
     try {
       List<Intent> intentShareList = new ArrayList<Intent>();
       Intent shareIntent = new Intent();
@@ -187,15 +208,20 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
         String packageName = resInfo.activityInfo.packageName;
         String name = resInfo.activityInfo.name;
         if (packageName.contains("com.android.email") ||
-            packageName.contains("com.google.android.gm") ||
-            packageName.contains("mail")) {
+                packageName.contains("com.google.android.gm") ||
+                packageName.contains("mail")) {
           Intent intent = new Intent();
           intent.setComponent(new ComponentName(packageName, name));
           intent.setAction(Intent.ACTION_SEND);
           intent.setType("message/rfc822");
-          intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-          intent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-          intent.putExtra(Intent.EXTRA_SUBJECT, "https://www.leoapp.com");
+          if (shareUrl.isEmpty()) {
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
+            intent.putExtra(Intent.EXTRA_SUBJECT, "https://www.leoapp.com");
+          } else {
+            intent.putExtra(Intent.EXTRA_SUBJECT, "Reality by Leo AR Camera");
+            intent.putExtra(Intent.EXTRA_TEXT, shareUrl);
+          }
           intentShareList.add(intent);
         }
       }
@@ -215,13 +241,18 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void shareViaTwitter(String filePath, final Promise promise) {
+  public void shareViaTwitter(String filePath, String shareUrl, final Promise promise) {
     try {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
-      shareIntent.setType(this.getMimeType(filePath));
+      if (shareUrl.isEmpty()) {
+        shareIntent.setType(this.getMimeType(filePath));
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
+      } else {
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
+      }
       shareIntent.setPackage("com.twitter.android");
-      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
       promise.resolve(null);
     } catch (Exception ex) {
@@ -231,12 +262,17 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void shareViaTumblr(String filePath, final Promise promise) {
+  public void shareViaTumblr(String filePath, String shareUrl, final Promise promise) {
     try {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
-      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-      shareIntent.setType(this.getMimeType(filePath));
+      if (shareUrl.isEmpty()) {
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
+        shareIntent.setType(this.getMimeType(filePath));
+      } else {
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
+      }
       shareIntent.setPackage("com.tumblr");
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
       promise.resolve(null);
@@ -247,12 +283,17 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void shareViaMoreOptions(String filePath, final Promise promise) {
+  public void shareViaMoreOptions(String filePath, String shareUrl, final Promise promise) {
     try {
       Intent shareIntent = new Intent();
-      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-      shareIntent.setType(this.getMimeType(filePath));
+      if (shareUrl.isEmpty()) {
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
+        shareIntent.setType(this.getMimeType(filePath));
+      } else {
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
+      }
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
       promise.resolve(null);
     } catch (Exception ex) {
@@ -262,7 +303,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void shareViaFBMessenger(String filePath, final Promise promise) {
+  public void shareViaFBMessenger(String filePath, String shareUrl, final Promise promise) {
     String EXTRA_PROTOCOL_VERSION = "com.facebook.orca.extra.PROTOCOL_VERSION";
     String EXTRA_APP_ID = "com.facebook.orca.extra.APPLICATION_ID";
     int PROTOCOL_VERSION = 20150314;
@@ -272,11 +313,16 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
     try {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
       shareIntent.setPackage("com.facebook.orca");
-      shareIntent.setType(this.getMimeType(filePath));
-      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
+      if (shareUrl.isEmpty()) {
+        shareIntent.setType(this.getMimeType(filePath));
+        shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      } else {
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
+      }
       shareIntent.putExtra(EXTRA_PROTOCOL_VERSION, PROTOCOL_VERSION);
       shareIntent.putExtra(EXTRA_APP_ID, YOUR_FB_APP_ID);
-      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
       this.reactContext.getCurrentActivity().startActivityForResult(shareIntent, SHARE_TO_MESSENGER_REQUEST_CODE);
       promise.resolve(null);
     } catch (Exception ex) {
