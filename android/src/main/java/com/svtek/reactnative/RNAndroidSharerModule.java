@@ -1,6 +1,7 @@
 
 package com.svtek.reactnative;
 
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -169,6 +170,26 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       shareIntent.setType(this.getMimeType(filePath));
       shareIntent.setPackage("com.instagram.android");
       this.reactContext.getCurrentActivity().startActivity(shareIntent);
+      promise.resolve(null);
+    } catch (Exception ex) {
+      ex.printStackTrace();
+      promise.reject(this.getName(), ex);
+    }
+  }
+
+  @ReactMethod
+  public void shareViaInstagramStories(String filePath, String attributionUrl, final Promise promise) {
+    try {
+      Intent intent = new Intent("com.instagram.share.ADD_TO_STORY");
+      intent.setDataAndType(this.uriFromFilePath(filePath), this.getMimeType(filePath));
+      intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      intent.putExtra("content_url", attributionUrl);
+
+      Activity activity = this.reactContext.getCurrentActivity();
+      if (activity.getPackageManager().resolveActivity(intent, 0) != null) {
+        activity.startActivityForResult(intent, 0);
+      }
+
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
