@@ -62,6 +62,32 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
     }
   }
 
+  private boolean isAppInstalled(String uri) {
+    PackageManager pm = this.reactContext.getPackageManager();
+    try {
+      pm.getApplicationInfo(uri, 0);
+      return true;
+    } catch (PackageManager.NameNotFoundException e) {
+      // Error
+    }
+    return false;
+  }
+
+  private void shareContentViaFacebook(String filePath, String shareUrl, final Promise promise) {
+    if (!shareUrl.isEmpty()) {
+      ShareDialog shareDialog = new ShareDialog(this.reactContext.getCurrentActivity());
+      ShareLinkContent content = new ShareLinkContent.Builder().setContentUrl(Uri.parse(shareUrl)).build();
+      shareDialog.show(content, ShareDialog.Mode.WEB);
+    } else {
+      String mimeType = this.getMimeType(filePath);
+      if (mimeType.startsWith("image")) {
+        this.shareImageViaFacebook(filePath, promise);
+      } else {
+        this.shareVideoViaFacebook(filePath, promise);
+      }
+    }
+  }
+
   private void shareImageViaFacebook(String filePath, final Promise promise) {
     try {
       ParcelFileDescriptor fd = this.reactContext.getContentResolver()
@@ -69,7 +95,8 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       Bitmap image = BitmapFactory.decodeFileDescriptor(fd.getFileDescriptor());
       SharePhoto photo = new SharePhoto.Builder().setBitmap(image).build();
       SharePhotoContent content = new SharePhotoContent.Builder().addPhoto(photo).build();
-      ShareDialog.show(this.reactContext.getCurrentActivity(), content);
+      ShareDialog shareDialog = new ShareDialog(this.reactContext.getCurrentActivity());
+      shareDialog.show(content, ShareDialog.Mode.AUTOMATIC);
       fd.close();
       promise.resolve(null);
     } catch (Exception ex) {
@@ -83,7 +110,9 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       ShareVideo video = new ShareVideo.Builder()
               .setLocalUrl(this.uriFromFilePath(filePath)).build();
       ShareVideoContent content = new ShareVideoContent.Builder().setVideo(video).build();
-      ShareDialog.show(this.reactContext.getCurrentActivity(), content);
+      ShareDialog shareDialog = new ShareDialog(this.reactContext.getCurrentActivity());
+      shareDialog.show(content, ShareDialog.Mode.AUTOMATIC);
+
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
@@ -97,8 +126,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
     Uri result = null;
     if (Build.VERSION.SDK_INT <= 21) {
       result = Uri.fromFile(file);
-    }
-    else {
+    } else {
       final String packageName = this.reactContext.getApplicationContext().getPackageName();
       final String authority = new StringBuilder(packageName).append(".provider").toString();
       try {
@@ -199,19 +227,32 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void shareViaFacebook(String filePath, String shareUrl, final Promise promise) {
-    if (!shareUrl.isEmpty()) {
-      ShareLinkContent content = new ShareLinkContent.Builder()
-              .setContentUrl(Uri.parse(shareUrl))
-              .build();
-      ShareDialog.show(this.reactContext.getCurrentActivity(), content);
-      return;
-    }
 
-    String mimeType = this.getMimeType(filePath);
-    if (mimeType.startsWith("image")) {
-      this.shareImageViaFacebook(filePath, promise);
+    String applicationUri = "com.facebook.katana";
+
+    if (isAppInstalled(applicationUri)) {
+      try {
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        if (!shareUrl.isEmpty()) {
+          shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
+          shareIntent.setType("text/plain");
+        } else {
+          shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
+          shareIntent.setType(this.getMimeType(filePath));
+        }
+
+        shareIntent.setPackage(applicationUri);
+        this.reactContext.getCurrentActivity().startActivity(shareIntent);
+
+        promise.resolve(null);
+      } catch (Exception ex) {
+        ex.printStackTrace();
+        shareContentViaFacebook(filePath, shareUrl, promise);
+      }
     } else {
-      this.shareVideoViaFacebook(filePath, promise);
+      shareContentViaFacebook(filePath, shareUrl, promise);
     }
   }
 
