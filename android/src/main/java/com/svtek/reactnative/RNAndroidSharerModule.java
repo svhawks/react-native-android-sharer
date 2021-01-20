@@ -3,7 +3,6 @@ package com.svtek.reactnative;
 
 import android.app.Activity;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -13,10 +12,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.os.Parcelable;
-import android.provider.Settings;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.content.FileProvider;
+import android.provider.Telephony;
+import androidx.annotation.NonNull;
+import javax.annotation.Nullable;
+import androidx.core.content.FileProvider;
 import android.util.Log;
 
 import com.facebook.react.bridge.Promise;
@@ -142,24 +141,26 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void shareViaSms(String filePath, String shareUrl, final Promise promise) {
     try {
-      String defaultSmsApplication = Settings.Secure.getString(
-              this.reactContext.getContentResolver(),
-              "sms_default_application");
-      PackageManager pm = this.reactContext.getPackageManager();
-      Intent shareIntent;
+      Intent shareIntent = new Intent(Intent.ACTION_SEND);
+
       if (shareUrl.isEmpty()) {
-        shareIntent = new Intent(Intent.ACTION_SEND);
-        shareIntent.putExtra("sms_body", "https://www.leoapp.com");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, "https://www.leoapp.com");
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
         shareIntent.setType(this.getMimeType(filePath));
       } else {
-        shareIntent = new Intent(Intent.ACTION_VIEW);
-        shareIntent.setType("vnd.android-dir/mms-sms");
-        shareIntent.putExtra("sms_body", shareUrl);
+        shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
+        shareIntent.setType("text/plain");
       }
-      shareIntent.setPackage(defaultSmsApplication);
-      this.reactContext.getCurrentActivity().startActivity(shareIntent);
+
+      Activity activity = reactContext.getCurrentActivity();
+      String defaultSmsPackageName = Telephony.Sms.getDefaultSmsPackage(activity);
+
+      if (defaultSmsPackageName != null) {
+        shareIntent.setPackage(defaultSmsPackageName);
+      }
+
+      activity.startActivity(shareIntent);
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
@@ -353,6 +354,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
         shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
         shareIntent.setType(this.getMimeType(filePath));
       } else {
+        shareIntent.setAction(Intent.ACTION_SEND);
         shareIntent.setType("text/plain");
         shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
       }
