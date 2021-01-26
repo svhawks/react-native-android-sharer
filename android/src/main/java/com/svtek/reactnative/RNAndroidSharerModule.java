@@ -1,4 +1,3 @@
-
 package com.svtek.reactnative;
 
 import android.app.Activity;
@@ -37,6 +36,7 @@ import java.util.List;
 public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
 
   private final ReactApplicationContext reactContext;
+  private static final String INSTAGRAM_PACKAGE_NAME = "com.instagram.android";
 
   public RNAndroidSharerModule(ReactApplicationContext reactContext) {
     super(reactContext);
@@ -193,32 +193,20 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void shareViaInstagram(String filePath, final Promise promise) {
     try {
-      Intent shareIntent = new Intent(Intent.ACTION_SEND);
-      shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-      shareIntent.setType(this.getMimeType(filePath));
-      shareIntent.setPackage("com.instagram.android");
-      this.reactContext.getCurrentActivity().startActivity(shareIntent);
-      promise.resolve(null);
-    } catch (Exception ex) {
-      ex.printStackTrace();
-      promise.reject(this.getName(), ex);
-    }
-  }
-
-  @ReactMethod
-  public void shareViaInstagramStories(String filePath, String attributionUrl, final Promise promise) {
-    try {
-      Intent intent = new Intent("com.instagram.share.ADD_TO_STORY");
-      intent.setDataAndType(this.uriFromFilePath(filePath), this.getMimeType(filePath));
-      intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      intent.putExtra("content_url", attributionUrl);
-
-      Activity activity = this.reactContext.getCurrentActivity();
-      if (activity.getPackageManager().resolveActivity(intent, 0) != null) {
-        activity.startActivityForResult(intent, 0);
-      }
-
+      Uri uri = uriFromFilePath(filePath);
+      Intent feedIntent = new Intent(Intent.ACTION_SEND);
+      feedIntent.setType("video/*");
+      feedIntent.putExtra(Intent.EXTRA_STREAM, uri);
+      feedIntent.setPackage(INSTAGRAM_PACKAGE_NAME);
+      Intent storiesIntent = new Intent("com.instagram.share.ADD_TO_STORY");
+      storiesIntent.setDataAndType(uri, "mp4");
+      storiesIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      storiesIntent.setPackage(INSTAGRAM_PACKAGE_NAME);
+      Activity activity = reactContext.getCurrentActivity();
+      activity.grantUriPermission(INSTAGRAM_PACKAGE_NAME, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      Intent chooserIntent = Intent.createChooser(feedIntent, "LeoAR");
+      chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] {storiesIntent});
+      activity.startActivity(chooserIntent);
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
