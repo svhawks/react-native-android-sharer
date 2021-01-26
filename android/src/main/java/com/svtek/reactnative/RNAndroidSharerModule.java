@@ -8,14 +8,12 @@ import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.os.Parcelable;
 import android.provider.Telephony;
 import androidx.annotation.NonNull;
 import javax.annotation.Nullable;
 import androidx.core.content.FileProvider;
-import android.util.Log;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -36,6 +34,9 @@ import java.util.List;
 public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
 
   private final ReactApplicationContext reactContext;
+  private static final String name = "RNAndroidSharer";
+  private static final String LEO_WEB_URL = "https://www.leoapp.com";
+  private static final String REALITY_SHARE_TITLE = "Reality by Leo AR Camera";
   private static final String INSTAGRAM_PACKAGE_NAME = "com.instagram.android";
 
   public RNAndroidSharerModule(ReactApplicationContext reactContext) {
@@ -43,21 +44,18 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
     this.reactContext = reactContext;
   }
 
+  @NonNull
   @Override
   public String getName() {
-    return "RNAndroidSharer";
+    return RNAndroidSharerModule.name;
   }
 
-  private String getMimeType(String filePath) {
-    try {
-      String extension = filePath.substring(filePath.lastIndexOf(".") + 1).toLowerCase();
-      if (extension.equals("mp4")) {
-        return "video/mp4";
-      }
+  private static String getMimeType(@NonNull String filePath) {
+    String extension = filePath.substring(filePath.lastIndexOf(".") + 1).toLowerCase();
+    if (extension.equals("mp4")) {
+      return "video/mp4";
+    } else {
       return String.format("image/%s", extension);
-    } catch (Exception ex) {
-      Log.d(this.getName(), ex.toString());
-      return "";
     }
   }
 
@@ -78,7 +76,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       ShareLinkContent content = new ShareLinkContent.Builder().setContentUrl(Uri.parse(shareUrl)).build();
       shareDialog.show(content, ShareDialog.Mode.WEB);
     } else {
-      String mimeType = this.getMimeType(filePath);
+      String mimeType = getMimeType(filePath);
       if (mimeType.startsWith("image")) {
         this.shareImageViaFacebook(filePath, promise);
       } else {
@@ -90,7 +88,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   private void shareImageViaFacebook(String filePath, final Promise promise) {
     try {
       ParcelFileDescriptor fd = this.reactContext.getContentResolver()
-              .openFileDescriptor(this.uriFromFilePath(filePath), "r");
+          .openFileDescriptor(this.uriFromFilePath(filePath), "r");
       Bitmap image = BitmapFactory.decodeFileDescriptor(fd.getFileDescriptor());
       SharePhoto photo = new SharePhoto.Builder().setBitmap(image).build();
       SharePhotoContent content = new SharePhotoContent.Builder().addPhoto(photo).build();
@@ -106,12 +104,10 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
 
   private void shareVideoViaFacebook(String filePath, final Promise promise) {
     try {
-      ShareVideo video = new ShareVideo.Builder()
-              .setLocalUrl(this.uriFromFilePath(filePath)).build();
+      ShareVideo video = new ShareVideo.Builder().setLocalUrl(this.uriFromFilePath(filePath)).build();
       ShareVideoContent content = new ShareVideoContent.Builder().setVideo(video).build();
       ShareDialog shareDialog = new ShareDialog(this.reactContext.getCurrentActivity());
       shareDialog.show(content, ShareDialog.Mode.AUTOMATIC);
-
       promise.resolve(null);
     } catch (Exception ex) {
       ex.printStackTrace();
@@ -122,20 +118,14 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   public @Nullable Uri uriFromFilePath(@NonNull String filePath) {
     filePath = filePath.replace("file://", "");
     File file = new File(filePath);
-    Uri result = null;
-    if (Build.VERSION.SDK_INT <= 21) {
-      result = Uri.fromFile(file);
-    } else {
-      final String packageName = this.reactContext.getApplicationContext().getPackageName();
-      final String authority = new StringBuilder(packageName).append(".provider").toString();
-      try {
-        result = FileProvider.getUriForFile(this.reactContext, authority, file);
-      }
-      catch(IllegalArgumentException e) {
-        e.printStackTrace();
-      }
+    final String packageName = this.reactContext.getApplicationContext().getPackageName();
+    final String authority = packageName + ".provider";
+    try {
+      return FileProvider.getUriForFile(this.reactContext, authority, file);
+    } catch (Exception e) {
+      e.printStackTrace();
+      return null;
     }
-    return result;
   }
 
   @ReactMethod
@@ -144,10 +134,10 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
 
       if (shareUrl.isEmpty()) {
-        shareIntent.putExtra(Intent.EXTRA_TEXT, "https://www.leoapp.com");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, LEO_WEB_URL);
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-        shareIntent.setType(this.getMimeType(filePath));
+        shareIntent.setType(getMimeType(filePath));
       } else {
         shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
         shareIntent.setType("text/plain");
@@ -173,10 +163,10 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
     try {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
       if (shareUrl.isEmpty()) {
-        shareIntent.putExtra(Intent.EXTRA_TEXT, "https://www.leoapp.com");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, LEO_WEB_URL);
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-        shareIntent.setType(this.getMimeType(filePath));
+        shareIntent.setType(getMimeType(filePath));
       } else {
         shareIntent.setType("text/plain");
         shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
@@ -194,23 +184,28 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   public void shareViaInstagram(String filePath, final Promise promise) {
     try {
       Uri uri = uriFromFilePath(filePath);
+
       Intent feedIntent = new Intent(Intent.ACTION_SEND);
       feedIntent.setType("video/*");
       feedIntent.putExtra(Intent.EXTRA_STREAM, uri);
       feedIntent.setPackage(INSTAGRAM_PACKAGE_NAME);
+
       Intent storiesIntent = new Intent("com.instagram.share.ADD_TO_STORY");
       storiesIntent.setDataAndType(uri, "mp4");
       storiesIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
       storiesIntent.setPackage(INSTAGRAM_PACKAGE_NAME);
+
       Activity activity = reactContext.getCurrentActivity();
       activity.grantUriPermission(INSTAGRAM_PACKAGE_NAME, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      Intent chooserIntent = Intent.createChooser(feedIntent, "LeoAR");
-      chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] {storiesIntent});
+
+      Intent chooserIntent = Intent.createChooser(feedIntent, REALITY_SHARE_TITLE);
+      chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { storiesIntent });
       activity.startActivity(chooserIntent);
+
       promise.resolve(null);
-    } catch (Exception ex) {
-      ex.printStackTrace();
-      promise.reject(this.getName(), ex);
+    } catch (Exception e) {
+      e.printStackTrace();
+      promise.reject(getName(), e);
     }
   }
 
@@ -229,7 +224,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
           shareIntent.setType("text/plain");
         } else {
           shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-          shareIntent.setType(this.getMimeType(filePath));
+          shareIntent.setType(getMimeType(filePath));
         }
 
         shareIntent.setPackage(applicationUri);
@@ -252,15 +247,13 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       Intent shareIntent = new Intent();
       shareIntent.setAction(Intent.ACTION_SEND);
       shareIntent.setType("message/rfc822");
-      List<ResolveInfo> resolveInfoList =
-              this.reactContext.getPackageManager().queryIntentActivities(shareIntent, 0);
+      List<ResolveInfo> resolveInfoList = this.reactContext.getPackageManager().queryIntentActivities(shareIntent, 0);
 
       for (ResolveInfo resInfo : resolveInfoList) {
         String packageName = resInfo.activityInfo.packageName;
         String name = resInfo.activityInfo.name;
-        if (packageName.contains("com.android.email") ||
-                packageName.contains("com.google.android.gm") ||
-                packageName.contains("mail")) {
+        if (packageName.contains("com.android.email") || packageName.contains("com.google.android.gm")
+            || packageName.contains("mail")) {
           Intent intent = new Intent();
           intent.setComponent(new ComponentName(packageName, name));
           intent.setAction(Intent.ACTION_SEND);
@@ -268,9 +261,9 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
           if (shareUrl.isEmpty()) {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-            intent.putExtra(Intent.EXTRA_SUBJECT, "https://www.leoapp.com");
+            intent.putExtra(Intent.EXTRA_SUBJECT, LEO_WEB_URL);
           } else {
-            intent.putExtra(Intent.EXTRA_SUBJECT, "Reality by Leo AR Camera");
+            intent.putExtra(Intent.EXTRA_SUBJECT, REALITY_SHARE_TITLE);
             intent.putExtra(Intent.EXTRA_TEXT, shareUrl);
           }
           intentShareList.add(intent);
@@ -281,7 +274,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
         promise.reject(this.getName(), "Failed to find an email app.");
       } else {
         Intent chooserIntent = Intent.createChooser(intentShareList.remove(0), "Share via Email");
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentShareList.toArray(new Parcelable[]{}));
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentShareList.toArray(new Parcelable[] {}));
         this.reactContext.getCurrentActivity().startActivity(chooserIntent);
         promise.resolve(null);
       }
@@ -296,7 +289,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
     try {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
       if (shareUrl.isEmpty()) {
-        shareIntent.setType(this.getMimeType(filePath));
+        shareIntent.setType(getMimeType(filePath));
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
       } else {
@@ -319,7 +312,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       if (shareUrl.isEmpty()) {
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-        shareIntent.setType(this.getMimeType(filePath));
+        shareIntent.setType(getMimeType(filePath));
       } else {
         shareIntent.setType("text/plain");
         shareIntent.putExtra(Intent.EXTRA_TEXT, shareUrl);
@@ -340,7 +333,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       if (shareUrl.isEmpty()) {
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
-        shareIntent.setType(this.getMimeType(filePath));
+        shareIntent.setType(getMimeType(filePath));
       } else {
         shareIntent.setAction(Intent.ACTION_SEND);
         shareIntent.setType("text/plain");
@@ -366,7 +359,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       Intent shareIntent = new Intent(Intent.ACTION_SEND);
       shareIntent.setPackage("com.facebook.orca");
       if (shareUrl.isEmpty()) {
-        shareIntent.setType(this.getMimeType(filePath));
+        shareIntent.setType(getMimeType(filePath));
         shareIntent.putExtra(Intent.EXTRA_STREAM, this.uriFromFilePath(filePath));
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
       } else {
