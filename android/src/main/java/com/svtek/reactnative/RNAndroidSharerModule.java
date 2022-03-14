@@ -184,14 +184,14 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   public void shareViaInstagram(String filePath, final Promise promise) {
     try {
       Uri uri = uriFromFilePath(filePath);
-
+      String extension = filePath.substring(filePath.lastIndexOf(".") + 1).toLowerCase();
       Intent feedIntent = new Intent(Intent.ACTION_SEND);
-      feedIntent.setType("video/*");
+      feedIntent.setType(getMimeType(filePath));
       feedIntent.putExtra(Intent.EXTRA_STREAM, uri);
       feedIntent.setPackage(INSTAGRAM_PACKAGE_NAME);
 
       Intent storiesIntent = new Intent("com.instagram.share.ADD_TO_STORY");
-      storiesIntent.setDataAndType(uri, "mp4");
+      storiesIntent.setDataAndType(uri, extension);
       storiesIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
       storiesIntent.setPackage(INSTAGRAM_PACKAGE_NAME);
 
