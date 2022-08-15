@@ -375,4 +375,27 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
       promise.reject(this.getName(), ex);
     }
   }
+
+  @ReactMethod
+    public void shareToFacebookReels(String filePath, String appId, final Promise promise) {
+        String applicationUri = "com.facebook.katana";
+        String EXTRA_APP_ID = "com.facebook.platform.extra.APPLICATION_ID";
+
+        if (isAppInstalled(applicationUri)) {
+            try {
+                Uri uri = uriFromFilePath(filePath);
+                Activity activity = reactContext.getCurrentActivity();
+                Intent reelIntent = new Intent("com.facebook.reels.SHARE_TO_REEL");
+                reelIntent.putExtra(EXTRA_APP_ID, appId);
+                reelIntent.setDataAndType(uri, "video/mp4");
+                reelIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                if (activity.getPackageManager().resolveActivity(reelIntent, 0) != null) {
+                    activity.startActivityForResult(reelIntent, 0);
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                promise.reject(this.getName(), ex);
+            }
+        }
+    }
 }
