@@ -118,8 +118,7 @@ public class RNAndroidSharerModule extends ReactContextBaseJavaModule {
   public @Nullable Uri uriFromFilePath(@NonNull String filePath) {
     filePath = filePath.replace("file://", "");
     File file = new File(filePath);
-    final String packageName = this.reactContext.getApplicationContext().getPackageName();
-    final String authority = packageName + ".provider";
+    final String authority = this.reactContext.getPackageName() + ".fileProvider";
     try {
       return FileProvider.getUriForFile(this.reactContext, authority, file);
     } catch (Exception e) {

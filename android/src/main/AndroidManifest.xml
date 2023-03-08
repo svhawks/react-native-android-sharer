@@ -3,13 +3,13 @@
     package="com.svtek.reactnative">
     <application>
         <provider
-            android:name="android.support.v4.content.FileProvider"
+            android:name="com.svtek.reactnative.RNAndroidSharerFileProvider"
             android:authorities="${applicationId}.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/provider_paths" />
+                android:resource="@xml/rn_android_sharer_provider_paths" />
         </provider>
     </application>
 </manifest>
